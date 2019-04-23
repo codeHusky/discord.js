@@ -469,15 +469,38 @@ class Guild {
   }
 
   /**
+   * An object containing information about a guild member's ban.
+   * @typedef {Object} BanInfo
+   * @property {User} user User that was banned
+   * @property {?string} reason Reason the user was banned
+   */
+
+  /**
+   * Fetch a ban for a user.
+   * @returns {Promise<BanInfo>}
+   * @param {UserResolvable} user The user to fetch the ban for
+   * @example
+   * // Get ban
+   * guild.fetchBan(message.author)
+   *   .then(({ user, reason }) => console.log(`${user.tag} was banned for the reason: ${reason}.`))
+   *   .catch(console.error);
+   */
+  fetchBan(user) {
+    return this.client.rest.methods.getGuildBan(this, user);
+  }
+
+  /**
    * Fetch a collection of banned users in this guild.
-   * @returns {Promise<Collection<Snowflake, User>>}
+   * @returns {Promise<Collection<Snowflake, User|BanInfo>>}
+   * @param {boolean} [withReasons=false] Whether or not to include the ban reason(s)
    * @example
    * // Fetch bans in guild
    * guild.fetchBans()
    *   .then(bans => console.log(`This guild has ${bans.size} bans`))
    *   .catch(console.error);
    */
-  fetchBans() {
+  fetchBans(withReasons = false) {
+    if (withReasons) return this.client.rest.methods.getGuildBans(this);
     return this.client.rest.methods.getGuildBans(this)
       .then(bans => {
         const users = new Collection();
@@ -1032,16 +1055,19 @@ class Guild {
    * @returns {Promise<CategoryChannel|TextChannel|VoiceChannel>}
    * @example
    * // Create a new text channel
-   * guild.createChannel('new-general', 'text')
+   * guild.createChannel('new-general', { type: 'text' })
    *   .then(console.log)
    *   .catch(console.error);
    * @example
    * // Create a new category channel with permission overwrites
-   * guild.createChannel('new-category', 'category', [{
-   *   id: guild.id,
-   *   deny: ['MANAGE_MESSAGES'],
-   *   allow: ['SEND_MESSAGES']
-   * }])
+   * guild.createChannel('new-category', {
+   *   type: 'category',
+   *   permissionsOverwrites: [{
+   *     id: guild.id,
+   *     deny: ['MANAGE_MESSAGES'],
+   *     allow: ['SEND_MESSAGES']
+   *   }]
+   * })
    *   .then(console.log)
    *   .catch(console.error);
    */
@@ -1389,7 +1415,7 @@ class Guild {
     return collection.sort((a, b) =>
       a.position !== b.position ?
         a.position - b.position :
-        Long.fromString(a.id).sub(Long.fromString(b.id)).toNumber()
+        Long.fromString(b.id).sub(Long.fromString(a.id)).toNumber()
     );
   }
 }

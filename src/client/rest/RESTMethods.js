@@ -261,7 +261,18 @@ class RESTMethods {
   }
 
   createChannel(guild, name, options) {
-    const { type, topic, nsfw, bitrate, userLimit, parent, permissionOverwrites, rateLimitPerUser, reason } = options;
+    const {
+      type,
+      topic,
+      nsfw,
+      bitrate,
+      userLimit,
+      parent,
+      permissionOverwrites,
+      position,
+      rateLimitPerUser,
+      reason,
+    } = options;
     return this.rest.makeRequest('post', Endpoints.Guild(guild).channels, true, {
       name,
       topic,
@@ -271,6 +282,7 @@ class RESTMethods {
       user_limit: userLimit,
       parent_id: parent instanceof Channel ? parent.id : parent,
       permission_overwrites: resolvePermissions.call(this, permissionOverwrites, guild),
+      position,
       rate_limit_per_user: rateLimitPerUser,
     },
     undefined,
@@ -496,7 +508,11 @@ class RESTMethods {
 
   updateGuildMember(member, data, reason) {
     if (data.channel) {
-      data.channel_id = this.client.resolver.resolveChannel(data.channel).id;
+      const channel = this.client.resolver.resolveChannel(data.channel);
+      if (!channel || channel.guild.id !== member.guild.id || channel.type !== 'voice') {
+        return Promise.reject(new Error('Could not resolve channel to a guild voice channel.'));
+      }
+      data.channel_id = channel.id;
       data.channel = null;
     }
     if (data.roles) data.roles = data.roles.map(role => role instanceof Role ? role.id : role);
@@ -613,6 +629,14 @@ class RESTMethods {
           reject(err);
         });
     });
+  }
+
+  getGuildBan(guild, user) {
+    const id = this.client.resolver.resolveUserID(user);
+    return this.rest.makeRequest('get', `${Endpoints.Guild(guild).bans}/${id}`, true).then(ban => ({
+      reason: ban.reason,
+      user: this.client.dataManager.newUser(ban.user),
+    }));
   }
 
   getGuildBans(guild) {

@@ -344,6 +344,7 @@ declare module 'discord.js' {
 		public lastKey(): K;
 		public lastKey(count: number): K[];
 		public map<T>(fn: (value: V, key: K, collection: Collection<K, V>) => T, thisArg?: any): T[];
+		public partition(fn: (value: V, key: K, collection: Collection<K, V>) => boolean, thisArg?: any): [Collection<K, V>, Collection<K, V>];
 		public random(): V;
 		public random(count: number): V[];
 		public randomKey(): K;
@@ -533,7 +534,10 @@ declare module 'discord.js' {
 		public edit(data: GuildEditData, reason?: string): Promise<Guild>;
 		public equals(guild: Guild): boolean;
 		public fetchAuditLogs(options?: GuildAuditLogsFetchOptions): Promise<GuildAuditLogs>;
-		public fetchBans(): Promise<Collection<Snowflake, User>>;
+		public fetchBan(user: UserResolvable): Promise<BanInfo>;
+		public fetchBans(withReasons?: false): Promise<Collection<Snowflake, User>>;
+		public fetchBans(withReasons: true): Promise<Collection<Snowflake, BanInfo>>;
+		public fetchBans(withReasons: boolean): Promise<Collection<Snowflake, BanInfo | User>>;
 		public fetchEmbed(): Promise<GuildEmbedData>;
 		public fetchInvites(): Promise<Collection<Snowflake, Invite>>;
 		public fetchMember(user: UserResolvable, cache?: boolean): Promise<GuildMember>;
@@ -600,6 +604,7 @@ declare module 'discord.js' {
 		public readonly calculatedPosition: number;
 		public readonly deletable: boolean;
 		public guild: Guild;
+		public readonly manageable: boolean;
 		public readonly messageNotifications: GuildChannelMessageNotifications;
 		public readonly muted: boolean;
 		public name: string;
@@ -968,7 +973,8 @@ declare module 'discord.js' {
 		constructor(data: object, client: Client);
 		public readonly client: Client;
 		public game: Game;
-		public status: 'online' | 'offline' | 'idle' | 'dnd';
+		public status: PresenceStatusData;
+		public clientStatus: ClientPresenceStatusData;
 		public equals(presence: Presence): boolean;
 	}
 
@@ -1014,6 +1020,7 @@ declare module 'discord.js' {
 		public files?: Array<Attachment | string | FileOptions>;
 		public footer?: { text?: string; icon_url?: string; };
 		public image?: { url: string; proxy_url?: string; height?: number; width?: number; };
+		public readonly length: number;
 		public thumbnail?: { url: string; height?: number; width?: number; };
 		public timestamp?: Date;
 		public title?: string;
@@ -1028,7 +1035,7 @@ declare module 'discord.js' {
 		public setFooter(text: StringResolvable, icon?: string): this;
 		public setImage(url: string): this;
 		public setThumbnail(url: string): this;
-		public setTimestamp(timestamp?: Date): this;
+		public setTimestamp(timestamp?: Date | number): this;
 		public setTitle(title: StringResolvable): this;
 		public setURL(url: string): this;
 	}
@@ -1598,6 +1605,11 @@ declare module 'discord.js' {
 
 	type AwaitReactionsOptions = ReactionCollectorOptions & { errors?: string[] };
 
+	type BanInfo = {
+		user: User;
+		reason: string | null;
+	};
+
 	type BanOptions = {
 		days?: number;
 		reason?: string;
@@ -1667,6 +1679,7 @@ declare module 'discord.js' {
 	type CollectorOptions = { time?: number };
 
 	type ColorResolvable = ('DEFAULT'
+		| 'WHITE'
 		| 'AQUA'
 		| 'GREEN'
 		| 'BLUE'
@@ -2032,10 +2045,19 @@ declare module 'discord.js' {
 		} | null;
 	};
 
-	type PresenceStatus = 'online' | 'idle' | 'invisible' | 'dnd';
+	type ClientPresenceStatus = 'online' | 'idle' | 'dnd';
+
+	type PresenceStatus = ClientPresenceStatus | 'invisible';
+	type PresenceStatusData = ClientPresenceStatus | 'offline';
+
+	type ClientPresenceStatusData = {
+		web?: ClientPresenceStatus;
+		mobile?: ClientPresenceStatus;
+		desktop?: ClientPresenceStatus;
+	};
 
 	type RateLimitInfo = {
-		requestLimit: number;
+		limit: number;
 		timeDifference: number;
 		method: string;
 		path: string;
